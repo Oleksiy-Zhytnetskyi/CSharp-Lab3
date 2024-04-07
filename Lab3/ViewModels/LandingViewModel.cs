@@ -1,8 +1,11 @@
 ﻿using KMA.CSharp2024.Lab3.Commands;
+using KMA.CSharp2024.Lab3.Constants;
+using KMA.CSharp2024.Lab3.Exceptions;
 using KMA.CSharp2024.Lab3.Helpers;
 using KMA.CSharp2024.Lab3.Models;
 using KMA.CSharp2024.Lab3.ViewModels.Abstract;
 using KMA.CSharp2024.Lab3.Views;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
 
@@ -10,10 +13,6 @@ namespace KMA.CSharp2024.Lab3.ViewModels
 {
     public class LandingViewModel : ViewChangeCapableViewModel
     {
-        #region Constants
-        private const int AGE_THRESHOLD = 135;
-        #endregion
-
         #region Fields
         private Person _person;
 
@@ -98,10 +97,8 @@ namespace KMA.CSharp2024.Lab3.ViewModels
         private async void ExecuteProceed(object parameter)
         {
             BlockUI();
-            if (!BirthDateIsValid())
+            if (!ValidateFields())
             {
-                MessageBox.Show("Invalid birth date entered. Please try again.",
-                        "Error: Invalid Birth Date", MessageBoxButton.OK, MessageBoxImage.Error);
                 UnblockUI();
                 return;
             }
@@ -120,9 +117,57 @@ namespace KMA.CSharp2024.Lab3.ViewModels
             return IsFormValid;
         }
 
-        private bool BirthDateIsValid()
+        private bool ValidateFields()
         {
-            return !(_birthDate > DateTime.Today || PersonHelper.GetAge(_birthDate) > AGE_THRESHOLD);
+            try
+            {
+                ValidateEmail();
+                ValidateBirthDate();
+                return true;
+            }
+            catch (InvalidEmailException ex)
+            {
+                MessageBox.Show(
+                    ex.Message, "Invalid email format",
+                    MessageBoxButton.OK, MessageBoxImage.Error
+                );
+            }
+            catch (AgeTooHighException ex)
+            {
+                MessageBox.Show(
+                    ex.Message, "Invalid birth date", 
+                    MessageBoxButton.OK, MessageBoxImage.Error
+                );
+            }
+            catch (AgeTooLowException ex)
+            {
+                MessageBox.Show(
+                    ex.Message, "Invalid birth date", 
+                    MessageBoxButton.OK, MessageBoxImage.Error
+                );
+            }
+            return false;
+        }
+
+        private void ValidateBirthDate()
+        {
+            if (_birthDate > DateTime.Today)
+            {
+                throw new AgeTooLowException();
+            }
+            if (PersonHelper.GetAge(_birthDate) > ApplicationConstants.AGE_THRESHOLD)
+            {
+                throw new AgeTooHighException();
+            }
+        }
+
+        private void ValidateEmail()
+        {
+            string pattern = @"^[a-zA-Z0-9\.]+@[a-zA-Z0-9]+(?:\.[a-zA-Z]{2,})+$";
+            if (!new Regex(pattern).IsMatch(_email))
+            {
+                throw new InvalidEmailException();
+            }
         }
 
         private void BlockUI()
